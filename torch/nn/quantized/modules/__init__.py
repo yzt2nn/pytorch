@@ -7,6 +7,7 @@ from .activation import ReLU, ReLU6
 from .batchnorm import BatchNorm2d
 from .conv import Conv2d, Conv3d
 from .linear import Linear
+from .rnn import LSTM
 
 from .functional_modules import FloatFunctional, QFunctional
 
@@ -83,6 +84,7 @@ __all__ = [
     'Conv3d',
     'DeQuantize',
     'Linear',
+    'LSTM',
     'MaxPool2d',
     'Quantize',
     'ReLU',
