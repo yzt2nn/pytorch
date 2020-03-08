@@ -137,22 +137,6 @@ void testLiteInterpreterTuple() {
   AT_ASSERT(output.toTuple()->elements()[1].toInt() == 2);
 }
 
-void testLiteInterpreterPrimOverload() {
-  script::Module m("m");
-  m.define(R"JIT(
-  def forward(self, x):
-      result = [1, 2]
-      result.append(3)
-      return result
-  )JIT");
-  std::stringstream ss;
-  m._save_for_mobile(ss);
-  mobile::Module bc = _load_for_mobile(ss);
-  std::vector<torch::jit::IValue> inputs({torch::ones({})});
-  auto output = bc.run_method("forward", inputs);
-  AT_ASSERT(output.toIntList()[2] == 3);
-}
-
 void testLiteInterpreterPrim() {
   script::Module m("m");
   m.define(R"JIT(
