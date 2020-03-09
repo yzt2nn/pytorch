@@ -113,7 +113,7 @@ void pushRange(std::string name) {
   pushRangeImpl(StringView(std::move(name)));
 }
 
-void popRange() {
+void popRange(const StringView& name) {
   if (state == ProfilerState::Disabled) {
     return;
   }
@@ -122,7 +122,7 @@ void popRange() {
   } else {
     getEventList().record(
         EventKind::PopRange,
-        StringView(""),
+        name,
         thread_id,
         state == ProfilerState::CUDA);
   }
@@ -182,12 +182,12 @@ void enableProfiler(ProfilerConfig config) {
             auto& eventList = eventListIter->second;
             eventList->record(
                       EventKind::PopRange,
-                      StringView(""),
+                      fn.name(),
                       fn.getStartCallbacksThreadId(),
                       state == ProfilerState::CUDA);
           }
         } else {
-          popRange();
+          popRange(fn.name());
         }
       },
       config.report_input_shapes);
