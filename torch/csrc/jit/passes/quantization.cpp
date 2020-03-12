@@ -1049,7 +1049,7 @@ InsertObserversHelper::insertObserversFor(
 
   std::stack<Block*> blocks_to_visit;
   blocks_to_visit.push(block);
-  auto* self = block->inputs()[0];
+  auto* self = block->owningGraph()->inputs()[0];
   // We first construct a map from value to the module, then
   // insert observers for them later, this is to avoid interference
   // of the inserted observers with the analysis to decide where
@@ -1104,6 +1104,44 @@ InsertObserversHelper::insertObserversFor(
             block_observed_values.insert(n->output(i));
           }
         }
+      } else if (n->kind() == prim::If) {
+        std::vector<size_t> aggregated_observed_outputs;
+        std::vector<c10::optional<script::Module>> aggregated_output_observers;
+        for (Block* subblock : n->blocks()) {
+          // subblock has access to all the values in the scope of prim::If,
+          // so subblock_observed_values == block_observed_values
+          auto info_from_subblock = insertObserversFor(subblock, module, block_observed_values);
+          auto output_observers = std::get<1>(info_from_subblock);
+          auto subblock_observed_outputs = std::get<2>(info_from_subblock);
+          // subblock for prim::If doesn't have inputs
+          if (aggregated_observed_outputs.size() > 0) {
+            TORCH_CHECK(aggregated_observed_outputs == subblock_observed_outputs,
+                        "quantization doesn't work for the case where branches "
+                        "of `if` doesn't both return quantized/non-quantized "
+                        "values");
+          } else {
+            for (auto idx : subblock_observed_outputs) {
+              block_observed_values.insert(n->output(idx));
+            }
+            aggregated_observed_outputs = subblock_observed_outputs;
+          }
+          if (aggregated_output_observers.size() > 0) {
+            TORCH_CHECK(aggregated_output_observers == output_observers,
+                        "quantization doesn't work for the case where branches "
+                        "of `if` doesn't both return values quantized the same "
+                        "way");
+          } else {
+            for (auto i = 0; i < n->outputs().size(); ++i) {
+              if (output_observers[i] && !graph_inputs_outputs.count(n->output(i))
+                  && !block_observed_values.count(n->output(i))
+                  && !observed_values_.count(n->output(i))) {
+                values_to_observe[n->output(i)] = *output_observers[i];
+                block_observed_values.insert(n->output(i));
+              }
+            }
+            aggregated_output_observers = output_observers;
+          }
+        }
       } else {
         for (Value* v : n->outputs()) {
           propagateObservedProperty(v, block_observed_values);
@@ -1116,9 +1154,9 @@ InsertObserversHelper::insertObserversFor(
             }
           }
         }
-      }
-      for (Block* subblock : n->blocks()) {
-        blocks_to_visit.push(subblock);
+        for (Block* subblock : n->blocks()) {
+          blocks_to_visit.push(subblock);
+        }
       }
     }
   }
