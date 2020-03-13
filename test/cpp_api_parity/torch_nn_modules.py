@@ -1,7 +1,21 @@
+from collections import namedtuple
 import torch
 
-from cpp_api_parity import TorchNNModuleMetadata
+TorchNNModuleMetadata = namedtuple(
+    'TorchNNModuleMetadata',
+    [
+        'cpp_default_constructor_args',
+        'num_attrs_recursive',
+        'python_ignored_constructor_args',
+        'python_ignored_attrs',
+        'python_optional_attribute_to_jit_type',
+        'cpp_sources',
+    ]
+)
+TorchNNModuleMetadata.__new__.__defaults__ = (None, None, [], [], {}, '')
 
+# yf225 TODO: fix this as appropriate
+#
 # NOTE: In order to let Python/C++ API parity test pass for any of the modules here,
 # after fixing the C++ module implementation you should change change its "Implementation Parity"
 # from "No" to "Yes" in parity-tracker.md, and change the module's `TorchNNModuleMetadata` here
